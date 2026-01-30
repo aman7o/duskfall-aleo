@@ -1,4 +1,4 @@
-# Digital Will - Privacy-Preserving Inheritance on Aleo
+# Duskfall - Privacy-Preserving Inheritance on Aleo
 
 > A zero-knowledge Dead Man's Switch that ensures your digital assets reach the right people, without revealing your plans to the world.
 
@@ -9,7 +9,7 @@
 
 ## Overview
 
-Digital Will is a privacy-first digital inheritance system built on Aleo blockchain that enables users to:
+Duskfall is a privacy-first digital inheritance system built on Aleo blockchain that enables users to:
 
 - **Lock ALEO credits** in a secure, zero-knowledge smart contract
 - **Designate beneficiaries** with specific inheritance shares (all data encrypted)
@@ -17,19 +17,19 @@ Digital Will is a privacy-first digital inheritance system built on Aleo blockch
 - **Automatically distribute assets** when check-ins stop, ensuring your legacy is protected
 - **Store encrypted messages** that transfer to beneficiaries only upon activation
 
-Unlike traditional estate planning that requires lawyers, public records, and trust in centralized systems, Digital Will leverages Aleo's zero-knowledge proofs to keep your inheritance plans completely private until they need to be executed.
+Unlike traditional estate planning that requires lawyers, public records, and trust in centralized systems, Duskfall leverages Aleo's zero-knowledge proofs to keep your inheritance plans completely private until they need to be executed.
 
 ## Why Aleo? Privacy-First Architecture
 
-**40% of the Aleo Buildathon scoring is based on privacy implementation.** Here's how we achieve it:
+Here's how we achieve real privacy:
 
 ### 1. Zero-Knowledge Execution
 All will operations execute **offchain** using zero-knowledge proofs. Beneficiary identities, asset amounts, and inheritance shares remain completely hidden during normal operation.
 
 ### 2. Private Records, Not Public State
-Traditional blockchains expose all data publicly. Digital Will uses Aleo's **private records**:
+Traditional blockchains expose all data publicly. Duskfall uses Aleo's **private records**:
 - Your `WillConfig` is a private record only you can see
-- Each `Beneficiary` record is encrypted and owned by the beneficiary
+- Each `BenAllocation` record is encrypted and owned by the beneficiary
 - `LockedCredits` amounts are hidden from public view
 - Only the minimal verification data (will_id, status codes) exists on-chain
 
@@ -70,7 +70,6 @@ Owner and beneficiary addresses are stored as cryptographic hashes (BHP256), not
 ### User Experience
 - **Next.js Frontend** - Modern, responsive web interface
 - **Wallet Integration** - Seamless connection with Leo Wallet
-- **Local Testing Mode** - Test all features without deploying to testnet
 - **Real-Time Status** - Live countdown to check-in deadline
 - **Transaction Tracking** - Monitor all will operations on Aleo testnet
 
@@ -92,7 +91,7 @@ Owner and beneficiary addresses are stored as cryptographic hashes (BHP256), not
 │  │    ALEO BLOCKCHAIN (Zero-Knowledge Layer)    │           │
 │  ├─────────────────────────────────────────────┤           │
 │  │                                              │           │
-│  │  Smart Contract: digital_will_v3.aleo       │           │
+│  │  Smart Contract: digital_will_v7.aleo       │           │
 │  │  ┌──────────────────────────────────────┐  │           │
 │  │  │  PRIVATE RECORDS (Encrypted)         │  │           │
 │  │  │  • WillConfig (owner only)           │  │           │
@@ -153,13 +152,10 @@ Create `/Users/amansingh/digitalwill/frontend/.env.local`:
 ```bash
 # Aleo Network Configuration
 NEXT_PUBLIC_ALEO_NETWORK=testnet
-NEXT_PUBLIC_PROGRAM_ID=digital_will_v3.aleo
-
-# Local Testing Mode (set to 'true' for local testing without blockchain)
-NEXT_PUBLIC_ALEO_LOCAL_MODE=false
+NEXT_PUBLIC_PROGRAM_ID=digital_will_v7.aleo
 
 # API Configuration (if using custom RPC)
-NEXT_PUBLIC_ALEO_API_URL=https://api.explorer.aleo.org/v1
+NEXT_PUBLIC_ALEO_API_URL=https://api.explorer.provable.com/v1
 ```
 
 ### Run the Application
@@ -176,7 +172,7 @@ npm start
 npm run type-check
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3001](http://localhost:3001) in your browser.
 
 ## Usage Guide
 
@@ -186,7 +182,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - Approve the connection in Leo Wallet extension
 - Your Aleo address will be displayed
 
-### 2. Create Your Digital Will
+### 2. Create Your Will
 
 **Step 1: Configure Check-In Settings**
 ```
@@ -236,9 +232,14 @@ Deadline = Last Check-In + Check-In Period + Grace Period
 
 ### 4. Manage Your Will
 
-**Add More Funds**
+**Add More Funds (Private)**
 ```
 Dashboard → Deposit → Enter amount → Confirm
+```
+
+**Add More Funds (Public)** — uses public credits (e.g. from faucet)
+```
+Dashboard → Deposit Public → Enter amount → Confirm
 ```
 
 **Withdraw Funds** (while active)
@@ -271,11 +272,19 @@ The trigger caller receives a 0.1% bounty from the locked credits. The will stat
 Once triggered, beneficiaries can claim their share:
 
 ```
-Claims → View Claimable Wills → Claim Inheritance
+Claim → Enter Will ID → Claim Inheritance
 ```
 
+Two claim methods are available:
+
+**Method A: Record-Based Claim** (`claim_inheritance`)
+Uses the beneficiary's private `BenAllocation` record for verification.
+
+**Method B: Mapping-Based Claim** (`claim_inheritance_v2`)
+Uses on-chain mapping lookup — doesn't require the beneficiary to hold a record.
+
 The smart contract:
-1. Verifies the beneficiary's `Beneficiary` record with zero-knowledge proof
+1. Verifies the beneficiary's entitlement with zero-knowledge proof
 2. Calculates their share: `(Total Locked × Share BPS) / 10000`
 3. Transfers private credits directly to the beneficiary
 4. Creates an `InheritanceClaim` receipt record
@@ -296,7 +305,7 @@ This reactivates the will and resets the check-in timer.
 
 ## Smart Contract Deployment
 
-The contract is deployed at `digital_will_v3.aleo` on Aleo Testnet Beta.
+The contract is deployed at `digital_will_v7.aleo` on Aleo Testnet Beta.
 
 ### Deploy Your Own Instance
 
@@ -317,22 +326,6 @@ After deployment, update the program ID in your frontend `.env.local`:
 ```bash
 NEXT_PUBLIC_PROGRAM_ID=your_program_name.aleo
 ```
-
-## Local Testing Mode
-
-For development and testing without blockchain transactions:
-
-1. **Enable Local Mode** in the frontend:
-   ```
-   Dashboard → Toggle "Local" mode
-   ```
-
-2. All operations run in-memory with simulated blockchain state
-3. No wallet connection required
-4. Instant transactions (no block confirmations)
-5. Perfect for testing UI flows and logic
-
-**Note:** Local mode data is stored in browser localStorage and resets on page refresh.
 
 ## Privacy Model Deep Dive
 
@@ -392,8 +385,9 @@ Private Output:  Credits transferred privately to beneficiary
 - **TypeScript** - Type-safe development
 - **Tailwind CSS** - Utility-first styling
 - **Aleo Wallet Adapter** - Wallet connection and transaction signing
-- **Zustand** - State management
-- **date-fns** - Time/date utilities
+- **Zustand** - Will state management
+- **React Query** - Server state, caching, and background refetching
+- **Jotai** - Atomic UI state (modals, notifications, preferences)
 - **Lucide React** - Icon library
 
 ### Development Tools
@@ -432,7 +426,8 @@ Private Output:  Credits transferred privately to beneficiary
 - [x] Real ALEO credits integration
 - [x] Emergency recovery mechanism
 - [x] Web interface with wallet integration
-- [x] Local testing mode
+- [x] Mapping-based claim (v2) for beneficiaries without records
+- [x] Public deposit support
 
 ### Phase 2 (Q2 2026)
 - [ ] Multi-signature approval for large wills
@@ -487,7 +482,7 @@ A: That's why you set a grace period. If check-in period is 30 days and grace is
 A: Yes, use the deactivate_will function to pause it, or withdraw all funds and stop checking in.
 
 **Q: Is this legally binding?**
-A: Digital Will is a technical solution for asset transfer. Consult a lawyer about legal estate planning requirements in your jurisdiction.
+A: Duskfall is a technical solution for asset transfer. Consult a lawyer about legal estate planning requirements in your jurisdiction.
 
 **Q: What are the fees?**
 A: Standard Aleo transaction fees (varies by network congestion). The trigger bounty is 0.1% of locked assets.
@@ -523,4 +518,4 @@ The authors are not responsible for any loss of funds or legal issues arising fr
 
 ---
 
-Built with privacy in mind on [Aleo](https://aleo.org) 🔒
+Built with privacy in mind on [Aleo](https://aleo.org)

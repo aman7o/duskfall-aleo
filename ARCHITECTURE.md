@@ -1,6 +1,6 @@
-# Digital Will - Technical Architecture
+# Duskfall - Technical Architecture
 
-> Comprehensive technical documentation of the Digital Will system architecture, smart contract design, and privacy implementation on Aleo blockchain.
+> Comprehensive technical documentation of the Duskfall system architecture, smart contract design, and privacy implementation on Aleo blockchain.
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         DIGITAL WILL ECOSYSTEM                           │
+│                         DUSKFALL ECOSYSTEM                           │
 └─────────────────────────────────────────────────────────────────────────┘
 
     ┌─────────────────┐
@@ -60,27 +60,33 @@
 │  └──────────────────────────────────────────────────────────┘ │
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐ │
-│  │  Smart Contract: digital_will_v3.aleo                     │ │
+│  │  Smart Contract: digital_will_v7.aleo                     │ │
 │  │  ┌────────────────────────────────────────────────────┐  │ │
 │  │  │  PRIVATE RECORDS (Encrypted State)                 │  │ │
-│  │  │  • WillConfig         - Will owner only            │  │ │
-│  │  │  • Beneficiary        - Beneficiary only           │  │ │
-│  │  │  • LockedCredits      - Owner only                 │  │ │
-│  │  │  • SecretMessage      - Encrypted to recipient     │  │ │
-│  │  │  • ClaimableShare     - Beneficiary after trigger  │  │ │
-│  │  │  • InheritanceClaim   - Claim receipt              │  │ │
-│  │  │  • TriggerBounty      - Trigger reward             │  │ │
+│  │  │  • WillConfig              - Will owner only       │  │ │
+│  │  │  • Beneficiary             - Beneficiary only      │  │ │
+│  │  │  • BenAllocation           - Owner's view of ben.  │  │ │
+│  │  │  • LockedCredits           - Owner only            │  │ │
+│  │  │  • SecretMessage           - Encrypted to recipient│  │ │
+│  │  │  • ClaimableShare          - Beneficiary after trig│  │ │
+│  │  │  • InheritanceClaim        - Claim receipt         │  │ │
+│  │  │  • TriggerBounty           - Trigger reward        │  │ │
+│  │  │  • TimeLock                - Time-locked auth      │  │ │
+│  │  │  • PrivateBeneficiaryProof - Merkle proof          │  │ │
 │  │  └────────────────────────────────────────────────────┘  │ │
 │  │                                                            │ │
 │  │  ┌────────────────────────────────────────────────────┐  │ │
 │  │  │  PUBLIC MAPPINGS (Minimal Public State)            │  │ │
-│  │  │  • will_status       : field => u8                 │  │ │
-│  │  │  • last_checkin      : field => u32                │  │ │
-│  │  │  • checkin_periods   : field => u32                │  │ │
-│  │  │  • grace_periods     : field => u32                │  │ │
-│  │  │  • total_locked      : field => u64                │  │ │
-│  │  │  • total_claimed     : field => u64                │  │ │
-│  │  │  • owner_hash        : field => field              │  │ │
+│  │  │  • will_status             : field => u8           │  │ │
+│  │  │  • last_checkin            : field => u32          │  │ │
+│  │  │  • checkin_periods         : field => u32          │  │ │
+│  │  │  • grace_periods           : field => u32          │  │ │
+│  │  │  • total_locked            : field => u64          │  │ │
+│  │  │  • total_claimed           : field => u64          │  │ │
+│  │  │  • owner_hash              : field => field        │  │ │
+│  │  │  • beneficiary_claimed     : field => bool         │  │ │
+│  │  │  • beneficiary_allocations : field => u16          │  │ │
+│  │  │  • beneficiary_merkle_root : field => field        │  │ │
 │  │  └────────────────────────────────────────────────────┘  │ │
 │  └──────────────────────────────────────────────────────────┘ │
 │                                                                 │
@@ -100,7 +106,9 @@
 - Next.js 14 (App Router)
 - TypeScript 5.4+
 - Tailwind CSS
-- Zustand (state management)
+- Zustand (will transaction state)
+- React Query (server state, caching, polling)
+- Jotai (atomic UI state)
 - Aleo Wallet Adapter
 
 **Key Components:**
@@ -119,15 +127,26 @@ frontend/
 │   │   └── ui/                # Shared UI components
 │   ├── hooks/                 # React hooks
 │   │   ├── useWallet.ts       # Wallet state
-│   │   └── useWill.ts         # Will operations
+│   │   ├── useWill.ts         # Will operations
+│   │   └── useWillQuery.ts    # React Query hooks (caching, polling)
 │   ├── services/              # Business logic
 │   │   ├── aleo.ts            # Aleo network service
-│   │   └── local-aleo.ts      # Local testing service
+│   │   └── rpc-client.ts      # RPC client for chain queries
+│   ├── store/
+│   │   └── atoms.ts           # Jotai atoms (UI state, notifications)
+│   ├── providers/             # React providers
+│   │   └── QueryProvider.tsx   # React Query provider
 │   ├── types/                 # TypeScript definitions
-│   └── contexts/              # React contexts
+│   └── utils/                 # Utility functions
 ```
 
 **State Management:**
+
+Three state systems work together:
+- **Zustand** — will transaction state (records, loading, errors)
+- **React Query** — server data with caching and background refetching
+- **Jotai** — UI atoms (modals, notifications, preferences)
+
 ```typescript
 // Zustand store for will state
 interface WillStore {
@@ -139,7 +158,9 @@ interface WillStore {
   isLoading: boolean;
   error: string | null;
   programDeployed: boolean;
-  isLocalMode: boolean;
+  txProgress: TxProgressStatus;
+  currentTxId: string | null;
+  activeAbortController: AbortController | null;
 }
 ```
 
@@ -154,7 +175,7 @@ interface WillStore {
 ```
 contracts/digital_will/
 ├── src/
-│   └── main.leo              # Main contract (558 lines)
+│   └── main.leo              # Main contract (~1300 lines)
 ├── build/                    # Compiled output
 │   ├── main.aleo            # Compiled instructions
 │   ├── program.json         # Metadata
@@ -233,7 +254,27 @@ let verification: field = BHP256::hash_to_field(
 - **Revocability:** Owner can revoke by setting is_active = false
 - **Share Verification:** Smart contract ensures shares don't exceed 10000 bps
 
-#### 3. LockedCredits
+#### 3. BenAllocation
+
+Owner-visible copy of beneficiary assignment. Fixes the issue where the will owner couldn't see their own beneficiaries (since `Beneficiary` records are owned by the beneficiary).
+
+```leo
+record BenAllocation {
+    owner: address,              // Will owner (can see this record)
+    beneficiary_addr: address,   // Beneficiary's address (private)
+    will_id: field,
+    share_bps: u16,
+    priority: u8,
+    is_active: bool,
+}
+```
+
+**Properties:**
+- **Privacy:** Only the will owner can decrypt
+- **Purpose:** Lets the owner view and manage their beneficiary list
+- **Revocability:** Owner can revoke via `revoke_beneficiary`
+
+#### 4. LockedCredits
 
 Tracks credits deposited into the will.
 
@@ -342,6 +383,17 @@ mapping total_claimed: field => u64;
 
 mapping owner_hash: field => field;
 // BHP256 hash of owner address (for backup check-in)
+
+mapping beneficiary_claimed: field => bool;
+// Tracks whether a beneficiary has claimed (prevents double-claiming)
+// Key = hash(will_id + hash(beneficiary_address))
+
+mapping beneficiary_allocations: field => u16;
+// Hashed beneficiary shares for claim_inheritance_v2
+// Allows claiming without requiring a Beneficiary record
+
+mapping beneficiary_merkle_root: field => field;
+// Merkle root of beneficiary list for anonymous verification
 ```
 
 **Design Philosophy:**
@@ -438,9 +490,15 @@ private priority: u8,          // Priority order
 
 ##### deposit
 
-**Purpose:** Lock ALEO credits in the will
+**Purpose:** Lock private ALEO credits in the will
 
 **Integration:** Uses `credits.aleo/transfer_private_to_public` to transfer user's private credits to program's public balance
+
+##### deposit_public
+
+**Purpose:** Lock public ALEO credits in the will (e.g. faucet credits)
+
+**Integration:** Uses `credits.aleo/transfer_public_as_signer` to transfer user's public balance to the program
 
 ##### trigger_will
 
@@ -457,6 +515,12 @@ private priority: u8,          // Priority order
 **Privacy:** Beneficiary receives private credits via `credits.aleo/transfer_public_to_private`
 
 **Verification:** Share amount matches beneficiary's share_bps
+
+##### claim_inheritance_v2
+
+**Purpose:** Mapping-based claim — beneficiary doesn't need a `Beneficiary` record
+
+**Verification:** Looks up `beneficiary_allocations` mapping to verify entitlement. Prevents double-claiming via `beneficiary_claimed` mapping.
 
 ---
 
@@ -683,10 +747,16 @@ assert_eq(locked, expected_locked);
 | check_in | Owner | WillConfig | status = ACTIVE |
 | check_in_backup | Owner | None (uses will_id) | status = ACTIVE |
 | add_beneficiary | Owner | WillConfig | status = ACTIVE |
+| revoke_beneficiary | Owner | WillConfig + BenAllocation | status = ACTIVE |
 | deposit | Owner | WillConfig + credits | status = ACTIVE |
+| deposit_public | Anyone | None (uses will_id) | status = ACTIVE |
+| withdraw | Owner | WillConfig + LockedCredits | status = ACTIVE |
+| deactivate_will | Owner | WillConfig | status = ACTIVE |
+| reactivate_will | Owner | WillConfig | status = INACTIVE |
 | trigger_will | Anyone | None | status = ACTIVE, deadline passed |
 | claim_inheritance | Beneficiary | Beneficiary | status = TRIGGERED |
-| emergency_recovery | Owner | WillConfig + LockedCredits | < 50% claimed |
+| claim_inheritance_v2 | Beneficiary | None (mapping lookup) | status = TRIGGERED |
+| emergency_recovery | Owner | WillConfig + LockedCredits | status = TRIGGERED, < 50% claimed |
 
 ---
 
@@ -733,14 +803,18 @@ CLAIM:
 
 ### Transaction Costs
 
-| Operation | Estimated Cost | Complexity |
-|-----------|---------------|------------|
-| create_will | ~100,000 microcredits | Low (mapping writes) |
-| check_in | ~50,000 microcredits | Low (1 mapping write) |
-| add_beneficiary | ~80,000 microcredits | Medium (record creation) |
-| deposit | ~150,000 microcredits | High (credits transfer) |
-| trigger_will | ~120,000 microcredits | Medium (status change + transfer) |
-| claim_inheritance | ~150,000 microcredits | High (credits transfer) |
+| Operation | Estimated Fee | Complexity |
+|-----------|--------------|------------|
+| create_will | ~200,000 microcredits | Low (mapping writes) |
+| check_in | ~200,000 microcredits | Low (1 mapping write) |
+| add_beneficiary | ~400,000 microcredits | Medium (record creation) |
+| deposit | ~600,000 microcredits | High (credits transfer) |
+| deposit_public | ~600,000 microcredits | High (credits transfer) |
+| trigger_will | ~600,000 microcredits | High (status change + bounty transfer) |
+| claim_inheritance | ~600,000 microcredits | High (credits transfer) |
+| claim_inheritance_v2 | ~600,000 microcredits | High (mapping lookup + transfer) |
+| withdraw | ~600,000 microcredits | High (credits transfer) |
+| emergency_recovery | ~600,000 microcredits | High (credits transfer) |
 
 ### Proof Generation Time
 
@@ -767,7 +841,7 @@ CLAIM:
 
 ## Conclusion
 
-The Digital Will architecture demonstrates how Aleo's zero-knowledge capabilities enable truly private financial applications. By storing sensitive data in encrypted records and only exposing minimal verification state publicly, we achieve:
+The Duskfall architecture demonstrates how Aleo's zero-knowledge capabilities enable truly private financial applications. By storing sensitive data in encrypted records and only exposing minimal verification state publicly, we achieve:
 
 - **Privacy:** Beneficiary identities and shares remain hidden until necessary
 - **Security:** Cryptographic proofs verify all operations without exposing data
