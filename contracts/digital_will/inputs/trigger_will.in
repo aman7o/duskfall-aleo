@@ -1,0 +1,9 @@
+// Test input for trigger_will transition
+// Anyone can trigger the will after deadline passes (check_in_period + grace_period)
+// This is called when owner fails to check in within the allowed time
+// Caller receives 0.1% bounty for triggering (TRIGGER_BOUNTY_BPS = 10 = 0.1%)
+
+[trigger_will]
+will_id: 7621709804076072108229317122488814490650163242437823938998867782737570973140field
+expected_locked: 10000000u64  // Must match actual total_locked in mapping (prevents bounty manipulation)
+                               // If 10 ALEO locked, bounty = 10,000,000 * 10 / 10000 = 10,000 microcredits = 0.01 ALEO

@@ -1,0 +1,15 @@
+// Test input for update_check_in_period transition
+// Updates the check-in frequency requirement
+
+[update_check_in_period]
+config: WillConfig {
+    owner: aleo1testowner00000000000000000000000000000000000000000000000,
+    will_id: 0field,
+    check_in_period: 8640u64,
+    grace_period: 4320u64,
+    total_shares_bps: 0u16,
+    num_beneficiaries: 0u8,
+    is_active: true,
+    nonce: 1234567890field
+}
+new_period: 17280u64  // ~4 days (4320 blocks/day)

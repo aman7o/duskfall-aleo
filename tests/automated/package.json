@@ -1,0 +1,31 @@
+{
+  "name": "automated",
+  "version": "1.0.0",
+  "description": "SDK-based E2E Tests for Digital Will dApp",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "tsx sdk-e2e-tests.ts",
+    "test:comprehensive": "tsx comprehensive-e2e-tests.ts",
+    "test:contract": "bash test-will-lifecycle.sh",
+    "test:all": "npm run test:contract && npm run test && npm run test:comprehensive"
+  },
+  "keywords": [
+    "aleo",
+    "zk",
+    "e2e",
+    "testing"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@provablehq/sdk": "^0.9.15",
+    "@types/node": "^25.0.10",
+    "dotenv": "^16.6.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0"
+  }
+}

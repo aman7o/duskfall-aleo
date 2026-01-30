@@ -1,0 +1,6 @@
+// Test input for check_in_backup transition
+// Emergency check-in without WillConfig record using public will_id
+// Can be called by will owner if they lost their WillConfig record
+
+[check_in_backup]
+will_id: 7621709804076072108229317122488814490650163242437823938998867782737570973140field

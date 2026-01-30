@@ -1,0 +1,16 @@
+{
+  "program": "digital_will_v7.aleo",
+  "version": "2.0.0",
+  "description": "Dead Man's Switch / Digital Will v2.0 - A privacy-preserving digital inheritance system on Aleo with proper asset locking, share validation, and beneficiary management",
+  "license": "MIT",
+  "leo": "3.4.0",
+  "dependencies": [
+    {
+      "name": "credits.aleo",
+      "location": "network",
+      "path": null,
+      "edition": null
+    }
+  ],
+  "dev_dependencies": null
+}

@@ -1,0 +1,18 @@
+{
+  "name": "@digitalwill/sdk-examples",
+  "version": "1.0.0",
+  "description": "Usage examples for Digital Will SDK",
+  "private": true,
+  "scripts": {
+    "basic": "ts-node basic-usage.ts",
+    "advanced": "ts-node advanced-usage.ts"
+  },
+  "dependencies": {
+    "@digitalwill/sdk": "file:.."
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.0"
+  }
+}

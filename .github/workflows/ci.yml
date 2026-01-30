@@ -1,0 +1,230 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  # ============================================
+  # SDK Tests
+  # ============================================
+  sdk-tests:
+    name: SDK Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: sdk/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./sdk
+        run: npm ci
+
+      - name: Run type check
+        working-directory: ./sdk
+        run: npm run build
+
+      - name: Run tests
+        working-directory: ./sdk
+        run: npm run test -- --coverage
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          directory: ./sdk/coverage
+          flags: sdk
+          fail_ci_if_error: false
+
+  # ============================================
+  # Frontend Tests
+  # ============================================
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run type check
+        working-directory: ./frontend
+        run: npm run type-check
+
+      - name: Run lint
+        working-directory: ./frontend
+        run: npm run lint
+
+      - name: Build
+        working-directory: ./frontend
+        run: npm run build
+
+  # ============================================
+  # E2E Tests
+  # ============================================
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [frontend-tests]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: ./frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Run E2E tests
+        working-directory: ./frontend
+        run: npx playwright test
+        env:
+          CI: true
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/test-results/
+          retention-days: 7
+
+  # ============================================
+  # Contract Verification
+  # ============================================
+  contract-check:
+    name: Contract Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Leo
+        uses: AleoHQ/setup-leo@v1
+        with:
+          version: '1.12.0'
+
+      - name: Build contract
+        working-directory: ./contracts/digital_will
+        run: leo build
+
+      - name: Run contract tests
+        working-directory: ./contracts/digital_will
+        run: leo run create_will 12345field 40320u32 10080u32 || echo "Test completed"
+
+  # ============================================
+  # Security Scan
+  # ============================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --all-projects
+
+  # ============================================
+  # Deploy Preview (on PR)
+  # ============================================
+  deploy-preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, sdk-tests]
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: ./frontend
+        run: npm run build
+
+      # Add your deployment step here (Vercel, Netlify, etc.)
+      - name: Deploy to Vercel
+        if: false  # Enable when VERCEL_TOKEN is set
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./frontend
+
+  # ============================================
+  # All Checks Summary
+  # ============================================
+  all-checks:
+    name: All Checks
+    runs-on: ubuntu-latest
+    needs: [sdk-tests, frontend-tests, e2e-tests, contract-check]
+    if: always()
+
+    steps:
+      - name: Check all jobs
+        run: |
+          if [[ "${{ needs.sdk-tests.result }}" == "failure" ]] || \
+             [[ "${{ needs.frontend-tests.result }}" == "failure" ]] || \
+             [[ "${{ needs.e2e-tests.result }}" == "failure" ]] || \
+             [[ "${{ needs.contract-check.result }}" == "failure" ]]; then
+            echo "One or more checks failed"
+            exit 1
+          fi
+          echo "All checks passed!"

@@ -1,0 +1,17 @@
+// Test input for claim_inheritance transition
+// Beneficiary claims their inheritance share after will is triggered
+// Note: Use actual Beneficiary record from add_beneficiary output
+
+[claim_inheritance]
+beneficiary_record: Beneficiary {
+    owner: aleo1md5qazhtpf574ca9cu93ks30uckdd6635lzlq29kcnm2lvmdcv9s9getdn,
+    will_owner: aleo1z7fz8f3mz0mgm769uqpqhek34luq33y9dldqw4hp06nxurrrgc8sa7uyah,
+    will_id: 7621709804076072108229317122488814490650163242437823938998867782737570973140field,
+    share_bps: 5000u16,  // 50% share
+    priority: 1u8,
+    verification_hash: 0field,  // Replace with actual verification_hash from add_beneficiary output
+    is_active: true
+}
+amount_to_claim: 4995000u64  // Amount to claim (must be <= share percentage of total_locked)
+                              // If 10 ALEO locked and 0.01 ALEO bounty paid = 9,990,000 remaining
+                              // 50% share = 4,995,000 microcredits = 4.995 ALEO

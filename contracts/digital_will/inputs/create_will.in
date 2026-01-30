@@ -1,0 +1,8 @@
+// Test input for create_will transition
+// Creates a new digital will with check-in and grace periods
+// Owner: aleo1z7fz8f3mz0mgm769uqpqhek34luq33y9dldqw4hp06nxurrrgc8sa7uyah
+
+[create_will]
+nonce: 1234567890field
+check_in_period: 8640u32  // ~2 days (4320 blocks/day, meets MIN_CHECKIN_PERIOD of 4320)
+grace_period: 4320u32     // ~1 day grace period (meets MIN_CHECKIN_PERIOD of 4320)

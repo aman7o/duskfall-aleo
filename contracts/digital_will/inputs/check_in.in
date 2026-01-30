@@ -1,0 +1,15 @@
+// Test input for check_in transition
+// Owner checks in to reset the will timer
+// Note: Replace with actual WillConfig record from create_will output
+
+[check_in]
+config: WillConfig {
+    owner: aleo1z7fz8f3mz0mgm769uqpqhek34luq33y9dldqw4hp06nxurrrgc8sa7uyah,
+    will_id: 7621709804076072108229317122488814490650163242437823938998867782737570973140field,
+    check_in_period: 8640u32,
+    grace_period: 4320u32,
+    total_shares_bps: 0u16,
+    num_beneficiaries: 0u8,
+    is_active: true,
+    nonce: 1234567890field
+}

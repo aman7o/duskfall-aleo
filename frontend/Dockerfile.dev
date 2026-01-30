@@ -1,0 +1,22 @@
+# Development Dockerfile with hot reload
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# IMPORTANT: Per CLAUDE.md - TESTNET ONLY. No local/demo mode.
+ENV NEXT_PUBLIC_ALEO_LOCAL_MODE=false
+ENV NEXT_TELEMETRY_DISABLED=1
+
+EXPOSE 3000
+
+# Run development server
+CMD ["npm", "run", "dev"]
