@@ -29,7 +29,7 @@ All will operations execute **offchain** using zero-knowledge proofs. Beneficiar
 ### 2. Private Records, Not Public State
 Traditional blockchains expose all data publicly. Duskfall uses Aleo's **private records**:
 - Your `WillConfig` is a private record only you can see
-- Each `BenAllocation` record is encrypted and owned by the beneficiary
+- Each `BenAllocation` record is encrypted and owned by the beneficiary 
 - `LockedCredits` amounts are hidden from public view
 - Only the minimal verification data (will_id, status codes) exists on-chain
 
